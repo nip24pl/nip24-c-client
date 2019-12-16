@@ -48,13 +48,13 @@ extern "C" {
 
 /**
  * Utworzenie nowego obiektu z danymi
- * @param vat adres na utworzony obiekt
+ * @param iban adres na utworzony obiekt
  */
 NIP24_API BOOL ibanstatus_new(IBANStatus** iban);
 
 /**
  * Dealokacja obiektu z danymi
- * @param vat adres na utworzony obiekt
+ * @param iban adres na utworzony obiekt
  */
 NIP24_API void ibanstatus_free(IBANStatus** iban);
 

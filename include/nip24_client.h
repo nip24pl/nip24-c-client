@@ -23,7 +23,7 @@
 
 /////////////////////////////////////////////////////////////////
 
-#define NIP24_VERSION			"1.3.3"
+#define NIP24_VERSION			"1.3.4"
 
 #define NIP24_PRODUCTION_URL	"https://www.nip24.pl/api"
 
@@ -204,6 +204,27 @@ NIP24_API IBANStatus* nip24_get_iban_status(NIP24Client* nip24, Number type, con
  * @return dane firmy lub NULL w przypadku bledu
  */
 NIP24_API IBANStatus* nip24_get_iban_status_nip(NIP24Client* nip24, const char* nip, const char* iban, time_t date);
+
+/**
+ * Sprawdzenie statusu firmy na podstawie pliku bia³ej listy podatników VAT
+ * @param nip24 adres obiektu klienta
+ * @param type typ numeru identyfikujacego firme
+ * @param number numer okreslonego typu
+ * @param iban numer IBAN rachunku do sprawdzenia (polskie rachunki moga byc bez prefiksu PL)
+ * @param date dzien, ktorego ma dotyczyc sprawdzenie statusu (0 - biezacy dzien)
+ * @return dane firmy lub NULL w przypadku bledu
+ */
+NIP24_API WLStatus* nip24_get_whitelist_status(NIP24Client* nip24, Number type, const char* number, const char* iban, time_t date);
+
+/**
+ * Sprawdzenie statusu firmy na podstawie pliku bia³ej listy podatników VAT
+ * @param nip24 adres obiektu klienta
+ * @param nip numer NIP
+ * @param iban numer IBAN rachunku do sprawdzenia (polskie rachunki moga byc bez prefiksu PL)
+ * @param date dzien, ktorego ma dotyczyc sprawdzenie statusu (0 - biezacy dzien)
+ * @return dane firmy lub NULL w przypadku bledu
+ */
+NIP24_API WLStatus* nip24_get_whitelist_status_nip(NIP24Client* nip24, const char* nip, const char* iban, time_t date);
 
 /**
  * Sprawdzenie biezacego stanu konta uzytkownika

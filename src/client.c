@@ -1287,6 +1287,108 @@ NIP24_API IBANStatus* nip24_get_iban_status_nip(NIP24Client* nip24, const char* 
 	return nip24_get_iban_status(nip24, NIP, nip, iban, date);
 }
 
+NIP24_API WLStatus* nip24_get_whitelist_status(NIP24Client* nip24, Number type, const char* number, const char* iban, time_t date)
+{
+	IXMLDOMDocument2* doc = NULL;
+	WLStatus* ws = NULL;
+
+	char iban_str[MAX_STRING];
+	char date_str[MAX_STRING];
+	char url[MAX_STRING];
+
+	char* res = NULL;
+	char* ib = NULL;
+
+	if (!nip24 || type < NIP || type > KRS || !number || strlen(number) == 0 || !iban || strlen(iban) == 0) {
+		_nip24_set_err(nip24, "Nieprawid³owy parametr wejœciowy funkcji");
+		goto err;
+	}
+
+	snprintf(iban_str, sizeof(iban_str), "%s", iban);
+
+	if (!nip24_iban_is_valid(iban_str)) {
+		snprintf(iban_str, sizeof(iban_str), "PL%s", iban);
+
+		if (!nip24_iban_is_valid(iban_str)) {
+			_nip24_set_err(nip24, "Numer IBAN jest nieprawid³owy");
+			goto err;
+		}
+	}
+
+	ib = nip24_iban_normalize(iban_str);
+
+	if (date <= 0) {
+		date = time(NULL);
+	}
+
+	strftime(date_str, sizeof(date_str), "%Y-%m-%d", localtime(&date));
+
+	// clear error
+	_nip24_clear_err(nip24);
+
+	// validate number and construct path
+	snprintf(url, sizeof(url), "%s/check/whitelist/", nip24->url);
+
+	if (!_nip24_get_path_suffix(nip24, type, number, url)) {
+		goto err;
+	}
+
+	strcat_s(url, sizeof(url), "/");
+	strcat_s(url, sizeof(url), ib);
+	strcat_s(url, sizeof(url), "/");
+	strcat_s(url, sizeof(url), date_str);
+
+	// prepare request
+	if (!_nip24_http_get(nip24, url, &doc)) {
+		_nip24_set_err(nip24, "Nie uda³o siê nawi¹zaæ po³¹czenia z serwisem NIP24");
+		goto err;
+	}
+
+	// parse response
+	res = _nip24_parse_str(doc, L"/result/error/code", NULL);
+
+	if (res && strlen(res) > 0) {
+		// error
+		_nip24_set_err(nip24, _nip24_parse_str(doc, L"/result/error/description", NULL));
+		goto err;
+	}
+
+	if (!wlstatus_new(&ws)) {
+		goto err;
+	}
+
+	ws->UID = _nip24_parse_str(doc, L"/result/whitelist/uid", NULL);
+
+	ws->NIP = _nip24_parse_str(doc, L"/result/whitelist/nip", NULL);
+	ws->IBAN = _nip24_parse_str(doc, L"/result/whitelist/iban", NULL);
+
+	ws->Valid = _nip24_parse_bool(doc, L"/result/whitelist/valid", FALSE);
+	ws->Virtual = _nip24_parse_bool(doc, L"/result/whitelist/virtual", FALSE);
+
+	ws->Status = _nip24_parse_int(doc, L"/result/whitelist/vatStatus", 0);
+	ws->Result = _nip24_parse_str(doc, L"/result/whitelist/vatResult", NULL);
+
+	ws->HashIndex = _nip24_parse_int(doc, L"/result/whitelist/hashIndex", -1);
+	ws->MaskIndex = _nip24_parse_int(doc, L"/result/whitelist/maskIndex", -1);
+	ws->Date = _nip24_parse_date(doc, L"/result/whitelist/date");
+	ws->Source = _nip24_parse_str(doc, L"/result/whitelist/source", NULL);
+
+err:
+	if (doc) {
+		doc->lpVtbl->Release(doc);
+	}
+
+	free(res);
+	free(ib);
+
+	return ws;
+}
+
+NIP24_API WLStatus* nip24_get_whitelist_status_nip(NIP24Client* nip24, const char* nip, const char* iban, time_t date)
+{
+	return nip24_get_whitelist_status(nip24, NIP, nip, iban, date);
+}
+
 NIP24_API AccountStatus* nip24_get_account_status(NIP24Client* nip24)
 {
 	IXMLDOMDocument2* doc = NULL;
@@ -1335,6 +1437,7 @@ NIP24_API AccountStatus* nip24_get_account_status(NIP24Client* nip24)
 	status->ItemPriceInvoice = _nip24_parse_double(doc, L"/result/account/billingPlan/itemPriceInvoiceData", 0);
 	status->ItemPriceAll = _nip24_parse_double(doc, L"/result/account/billingPlan/itemPriceAllData", 0);
 	status->ItemPriceIBAN = _nip24_parse_double(doc, L"/result/account/billingPlan/itemPriceAllIBAN", 0);
+	status->ItemPriceWhitelist = _nip24_parse_double(doc, L"/result/account/billingPlan/itemPriceWLStatus", 0);
 
 	status->Limit = _nip24_parse_int(doc, L"/result/account/billingPlan/limit", 0);
 	status->RequestDelay = _nip24_parse_int(doc, L"/result/account/billingPlan/requestDelay", 0);
@@ -1357,6 +1460,7 @@ NIP24_API AccountStatus* nip24_get_account_status(NIP24Client* nip24)
 	status->FuncGetVIESData = _nip24_parse_bool(doc, L"/result/account/billingPlan/funcGetVIESData", FALSE);
 	status->FuncGetVATStatus = _nip24_parse_bool(doc, L"/result/account/billingPlan/funcGetVATStatus", FALSE);
 	status->FuncGetIBANStatus = _nip24_parse_bool(doc, L"/result/account/billingPlan/funcGetIBANStatus", FALSE);
+	status->FuncGetWhitelistStatus = _nip24_parse_bool(doc, L"/result/account/billingPlan/funcGetWLStatus", FALSE);
 
 	status->InvoiceDataCount = _nip24_parse_int(doc, L"/result/account/requests/invoiceData", 0);
 	status->AllDataCount = _nip24_parse_int(doc, L"/result/account/requests/allData", 0);
@@ -1364,6 +1468,7 @@ NIP24_API AccountStatus* nip24_get_account_status(NIP24Client* nip24)
 	status->VATStatusCount = _nip24_parse_int(doc, L"/result/account/requests/vatStatus", 0);
 	status->VIESStatusCount = _nip24_parse_int(doc, L"/result/account/requests/viesStatus", 0);
 	status->IBANStatusCount = _nip24_parse_int(doc, L"/result/account/requests/ibanStatus", 0);
+	status->WhitelistStatusCount = _nip24_parse_int(doc, L"/result/account/requests/wlStatus", 0);
 	status->TotalCount = _nip24_parse_int(doc, L"/result/account/requests/total", 0);
 
 err:

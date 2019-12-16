@@ -38,6 +38,7 @@ int main()
 	VATStatus* vat = NULL;
 	VIESData* vies = NULL;
 	IBANStatus* iban = NULL;
+	WLStatus* whitelist = NULL;
 
 	BOOL active;
 
@@ -146,6 +147,18 @@ int main()
 		printf("B³¹d: %s\n", nip24_get_last_err(nip24));
 	}
 
+	// Wywo³anie metody sprawdzaj¹cej status podmiotu na bia³ej liœcie podatników VAT
+	whitelist = nip24_get_whitelist_status(nip24, NIP, nip, account_number, 0);
+
+	if (whitelist != NULL) {
+		printf("NIP: %s\n", whitelist->NIP);
+		printf("IBAN: %s\n", whitelist->IBAN);
+		printf("Aktywny: %d\n", whitelist->Valid);
+	}
+	else {
+		printf("B³¹d: %s\n", nip24_get_last_err(nip24));
+	}
+
 err:
 	nip24_free(&nip24);
 
@@ -155,6 +168,7 @@ err:
 	vatstatus_free(&vat);
 	viesdata_free(&vies);
 	ibanstatus_free(&iban);
+	wlstatus_free(&whitelist);
 
 	return 0;
 }

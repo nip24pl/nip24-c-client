@@ -50,6 +50,7 @@
 #include "nip24_vies.h"
 #include "nip24_vat.h"
 #include "nip24_iban.h"
+#include "nip24_wl.h"
 #include "nip24_account.h"
 #include "nip24_client.h"
 

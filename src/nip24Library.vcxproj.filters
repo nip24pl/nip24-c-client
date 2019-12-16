@@ -51,6 +51,9 @@
     <ClInclude Include="..\include\nip24_iban.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\nip24_wl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="nip24.c">
@@ -81,6 +84,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="iban.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="wl.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

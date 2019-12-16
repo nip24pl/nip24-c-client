@@ -189,6 +189,7 @@
     <ClInclude Include="..\include\nip24_validate.h" />
     <ClInclude Include="..\include\nip24_vat.h" />
     <ClInclude Include="..\include\nip24_vies.h" />
+    <ClInclude Include="..\include\nip24_wl.h" />
     <ClInclude Include="internal.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
@@ -208,6 +209,7 @@
     <ClCompile Include="validate.c" />
     <ClCompile Include="vat.c" />
     <ClCompile Include="vies.c" />
+    <ClCompile Include="wl.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="nip24Library.rc" />

@@ -18,57 +18,31 @@
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
-#ifndef __NIP24_API_ACCOUNT_H__
-#define __NIP24_API_ACCOUNT_H__
+#ifndef __NIP24_API_WHITELIST_H__
+#define __NIP24_API_WHITELIST_H__
 
 /////////////////////////////////////////////////////////////////
 
 /**
- * Dane konta uzytkownika
+ * Status podmiotu na bia³ej liœcie
  */
-typedef struct AccountStatus {
+typedef struct WLStatus {
 	char* UID;
 
-	char* BillingPlanName;
+	char* NIP;
+	char* IBAN;
+	
+	BOOL Valid;
+	BOOL Virtual;
 
-	double SubscriptionPrice;
-	double ItemPrice;
-	double ItemPriceStatus;
-	double ItemPriceInvoice;
-	double ItemPriceAll;
-	double ItemPriceIBAN;
-	double ItemPriceWhitelist;
+	int Status;
+	char* Result;
 
-	int Limit;
-	int RequestDelay;
-	int DomainLimit;
-
-	BOOL OverPlanAllowed;
-	BOOL TerytCodes;
-	BOOL ExcelAddIn;
-	BOOL JPKVAT;
-	BOOL Stats;
-	BOOL NIPMonitor;
-	BOOL SearchByNIP;
-	BOOL SearchByREGON;
-	BOOL SearchByKRS;
-	BOOL FuncIsActive;
-	BOOL FuncGetInvoiceData;
-	BOOL FuncGetAllData;
-	BOOL FuncGetVIESData;
-	BOOL FuncGetVATStatus;
-	BOOL FuncGetIBANStatus;
-	BOOL FuncGetWhitelistStatus;
-
-	int InvoiceDataCount;
-	int AllDataCount;
-	int FirmStatusCount;
-	int VATStatusCount;
-	int VIESStatusCount;
-	int IBANStatusCount;
-	int WhitelistStatusCount;
-	int TotalCount;
-} AccountStatus;
+	int HashIndex;
+	int MaskIndex;
+	time_t Date;
+	char* Source;
+} WLStatus;
 
 /////////////////////////////////////////////////////////////////
 
@@ -78,15 +52,15 @@ extern "C" {
 
 /**
  * Utworzenie nowego obiektu z danymi
- * @param account adres na utworzony obiekt
+ * @param wl adres na utworzony obiekt
  */
-NIP24_API BOOL accountstatus_new(AccountStatus** account);
+NIP24_API BOOL wlstatus_new(WLStatus** wl);
 
 /**
  * Dealokacja obiektu z danymi
- * @param account adres na utworzony obiekt
+ * @param wl adres na utworzony obiekt
  */
-NIP24_API void accountstatus_free(AccountStatus** account);
+NIP24_API void wlstatus_free(WLStatus** wl);
 
 #ifdef __cplusplus
 }
