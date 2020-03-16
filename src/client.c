@@ -1,5 +1,5 @@
 /**
- * Copyright 2015-2019 NETCAT (www.netcat.pl)
+ * Copyright 2015-2020 NETCAT (www.netcat.pl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,13 @@
  * limitations under the License.
  *
  * @author NETCAT <firma@netcat.pl>
- * @copyright 2015-2019 NETCAT (www.netcat.pl)
+ * @copyright 2015-2020 NETCAT (www.netcat.pl)
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
 #include "internal.h"
 #include "nip24.h"
+
 
 /**
  * Zwraca losowy ciag w postaci heksadecymalnej
@@ -399,6 +400,8 @@ err:
  */
 static void _nip24_clear_err(NIP24Client* nip24)
 {
+	nip24->err_code = 0;
+
 	free(nip24->err);
 	nip24->err = NULL;
 }
@@ -406,14 +409,15 @@ static void _nip24_clear_err(NIP24Client* nip24)
 /**
  * Ustawienie komunikatu bledu
  * @param nip24 obiekt klienta
+ * @param code kod bledu
+ * @param err komunikat
  */
-static void _nip24_set_err(NIP24Client* nip24, const char* str)
+static void _nip24_set_err(NIP24Client* nip24, int code, const char* err)
 {
 	_nip24_clear_err(nip24);
 
-	if (str) {
-		nip24->err = strdup(str);
-	}
+	nip24->err_code = code;
+	nip24->err = strdup(err ? err : nip24_errstr(code));
 }
 
 /**
@@ -426,11 +430,13 @@ static void _nip24_set_err(NIP24Client* nip24, const char* str)
  */
 static BOOL _nip24_get_path_suffix(NIP24Client* nip24, Number type, const char* number, char* path)
 {
+	char iban_str[MAX_STRING];
+
 	char* n = NULL;
 
 	if (type == NIP) {
 		if (!nip24_nip_is_valid(number)) {
-			_nip24_set_err(nip24, "Numer NIP jest nieprawid³owy");
+			_nip24_set_err(nip24, NIP24_ERR_CLI_NIP, NULL);
 			return FALSE;
 		}
 
@@ -443,7 +449,7 @@ static BOOL _nip24_get_path_suffix(NIP24Client* nip24, Number type, const char* 
 	}
 	else if (type == REGON) {
 		if (!nip24_regon_is_valid(number)) {
-			_nip24_set_err(nip24, "Numer REGON jest nieprawid³owy");
+			_nip24_set_err(nip24, NIP24_ERR_CLI_REGON, NULL);
 			return FALSE;
 		}
 
@@ -456,7 +462,7 @@ static BOOL _nip24_get_path_suffix(NIP24Client* nip24, Number type, const char* 
 	}
 	else if (type == KRS) {
 		if (!nip24_krs_is_valid(number)) {
-			_nip24_set_err(nip24, "Numer KRS jest nieprawid³owy");
+			_nip24_set_err(nip24, NIP24_ERR_CLI_KRS, NULL);
 			return FALSE;
 		}
 
@@ -469,7 +475,7 @@ static BOOL _nip24_get_path_suffix(NIP24Client* nip24, Number type, const char* 
 	}
 	else if (type == EUVAT) {
 		if (!nip24_euvat_is_valid(number)) {
-			_nip24_set_err(nip24, "Numer EU VAT ID jest nieprawid³owy");
+			_nip24_set_err(nip24, NIP24_ERR_CLI_EUVAT, NULL);
 			return FALSE;
 		}
 
@@ -480,8 +486,27 @@ static BOOL _nip24_get_path_suffix(NIP24Client* nip24, Number type, const char* 
 
 		free(n);
 	}
+	else if (type == IBAN) {
+		snprintf(iban_str, sizeof(iban_str), "%s", number);
+
+		if (!nip24_iban_is_valid(iban_str)) {
+			snprintf(iban_str, sizeof(iban_str), "PL%s", number);
+
+			if (!nip24_iban_is_valid(iban_str)) {
+				_nip24_set_err(nip24, NIP24_ERR_CLI_IBAN, NULL);
+				return FALSE;
+			}
+		}
+
+		n = nip24_iban_normalize(iban_str);
+
+		strcat(path, "iban/");
+		strcat(path, n);
+
+		free(n);
+	}
 	else {
-		_nip24_set_err(nip24, "Nieprawid³owy typ numeru");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_NUMBER, NULL);
 		return FALSE;
 	}
 
@@ -685,6 +710,64 @@ static BOOL _nip24_parse_bool(IXMLDOMDocument2* doc, BSTR xpath, BOOL def)
 	return val;
 }
 
+/**
+ * Dodanie wartoœci wêz³a XML jako obiektu VATPerson do podanej listy
+ * @param doc obiekt dokumentu XML
+ * @param prefix sciezka do elementu
+ * @param list adres listy osób
+ * @param count adres na iloœæ elementów listy
+ */
+static void _nip24_parse_vatperson(IXMLDOMDocument2* doc, BSTR prefix, VATPerson*** list, int* count)
+{
+	VATPerson* vp = NULL;
+
+	wchar_t xpath[MAX_STRING];
+
+	char* str = NULL;
+
+	int i;
+
+	for (i = 1; ; i++) {
+		_snwprintf(xpath, MAX_STRING, L"%s/person[%d]/nip", prefix, i);
+		str = _nip24_parse_str(doc, xpath, NULL);
+
+		if (!str || strlen(str) == 0) {
+			break;
+		}
+
+		if (!vatperson_new(&vp)) {
+			goto err;
+		}
+
+		vp->NIP = str;
+		str = NULL;
+
+		_snwprintf(xpath, MAX_STRING, L"%s/person[%d]/companyName", prefix, i);
+		vp->CompanyName = _nip24_parse_str(doc, xpath, NULL);
+
+		_snwprintf(xpath, MAX_STRING, L"%s/person[%d]/firstName", prefix, i);
+		vp->FirstName = _nip24_parse_str(doc, xpath, NULL);
+
+		_snwprintf(xpath, MAX_STRING, L"%s/person[%d]/lastName", prefix, i);
+		vp->LastName = _nip24_parse_str(doc, xpath, NULL);
+
+		// add
+		(*count)++;
+
+		if (((*list) = (VATPerson**)realloc(*list, sizeof(VATPerson*) * (*count))) == NULL) {
+			goto err;
+		}
+
+		(*list)[(*count) - 1] = vp;
+		vp = NULL;
+	}
+
+err:
+	vatperson_free(&vp);
+
+	free(str);
+}
+
 /////////////////////////////////////////////////////////////////
 
 NIP24_API BOOL nip24_new(NIP24Client** nip24, const char* url, const char* id, const char* key)
@@ -746,6 +829,11 @@ NIP24_API void nip24_free(NIP24Client** nip24)
 	}
 }
 
+NIP24_API int nip24_get_last_err_code(NIP24Client* nip24)
+{
+	return (nip24 ? nip24->err_code : -1);
+}
+
 NIP24_API char* nip24_get_last_err(NIP24Client* nip24)
 {
 	return (nip24 ? nip24->err : NULL);
@@ -759,10 +847,10 @@ NIP24_API BOOL nip24_is_active(NIP24Client* nip24, Number type, const char* numb
 
 	char url[MAX_STRING];
 
-	char* res = NULL;
+	char* code = NULL;
 
 	if (!nip24 || type < NIP || type > EUVAT || !number || strlen(number) == 0) {
-		_nip24_set_err(nip24, "Nieprawid³owy parametr wejœciowy funkcji");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_INPUT, NULL);
 		goto err;
 	}
 
@@ -778,21 +866,21 @@ NIP24_API BOOL nip24_is_active(NIP24Client* nip24, Number type, const char* numb
 
 	// prepare request
 	if (!_nip24_http_get(nip24, url, &doc)) {
-		_nip24_set_err(nip24, "Nie uda³o siê nawi¹zaæ po³¹czenia z serwisem NIP24");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_CONNECT, NULL);
 		goto err;
 	}
 
 	// parse response
-	res = _nip24_parse_str(doc, L"/result/error/code", NULL);
+	code = _nip24_parse_str(doc, L"/result/error/code", NULL);
 
-	if (res && strlen(res) > 0) {
-		if (strcmp(res, "9") == 0) {
+	if (code && strlen(code) > 0) {
+		if (strcmp(code, "9") == 0) {
 			// not active
 			_nip24_clear_err(nip24);
 		}
 		else {
 			// error
-			_nip24_set_err(nip24, _nip24_parse_str(doc, L"/result/error/description", NULL));
+			_nip24_set_err(nip24, atoi(code), _nip24_parse_str(doc, L"/result/error/description", NULL));
 		}
 
 		goto err;
@@ -806,7 +894,7 @@ err:
 		doc->lpVtbl->Release(doc);
 	}
 
-	free(res);
+	free(code);
 
 	return ret;
 }
@@ -823,10 +911,10 @@ NIP24_API InvoiceData* nip24_get_invoice_data(NIP24Client* nip24, Number type, c
 
 	char url[MAX_STRING];
 
-	char* res = NULL;
+	char* code = NULL;
 
 	if (!nip24 || type < NIP || type > EUVAT || !number || strlen(number) == 0) {
-		_nip24_set_err(nip24, "Nieprawid³owy parametr wejœciowy funkcji");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_INPUT, NULL);
 		goto err;
 	}
 
@@ -842,16 +930,16 @@ NIP24_API InvoiceData* nip24_get_invoice_data(NIP24Client* nip24, Number type, c
 
 	// prepare request
 	if (!_nip24_http_get(nip24, url, &doc)) {
-		_nip24_set_err(nip24, "Nie uda³o siê nawi¹zaæ po³¹czenia z serwisem NIP24");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_CONNECT, NULL);
 		goto err;
 	}
 
 	// parse response
-	res = _nip24_parse_str(doc, L"/result/error/code", NULL);
+	code = _nip24_parse_str(doc, L"/result/error/code", NULL);
 
-	if (res && strlen(res) > 0) {
+	if (code && strlen(code) > 0) {
 		// error
-		_nip24_set_err(nip24, _nip24_parse_str(doc, L"/result/error/description", NULL));
+		_nip24_set_err(nip24, atoi(code), _nip24_parse_str(doc, L"/result/error/description", NULL));
 		goto err;
 	}
 
@@ -883,7 +971,7 @@ err:
 		doc->lpVtbl->Release(doc);
 	}
 
-	free(res);
+	free(code);
 
 	return id;
 }
@@ -902,13 +990,13 @@ NIP24_API AllData* nip24_get_all_data(NIP24Client* nip24, Number type, const cha
 	wchar_t xpath[MAX_STRING];
 	char url[MAX_STRING];
 
-	char* res = NULL;
+	char* code = NULL;
 	char* str = NULL;
 
 	int i;
 
 	if (!nip24 || type < NIP || type > EUVAT || !number || strlen(number) == 0) {
-		_nip24_set_err(nip24, "Nieprawid³owy parametr wejœciowy funkcji");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_INPUT, NULL);
 		goto err;
 	}
 
@@ -924,16 +1012,16 @@ NIP24_API AllData* nip24_get_all_data(NIP24Client* nip24, Number type, const cha
 
 	// prepare request
 	if (!_nip24_http_get(nip24, url, &doc)) {
-		_nip24_set_err(nip24, "Nie uda³o siê nawi¹zaæ po³¹czenia z serwisem NIP24");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_CONNECT, NULL);
 		goto err;
 	}
 
 	// parse response
-	res = _nip24_parse_str(doc, L"/result/error/code", NULL);
+	code = _nip24_parse_str(doc, L"/result/error/code", NULL);
 
-	if (res && strlen(res) > 0) {
+	if (code && strlen(code) > 0) {
 		// error
-		_nip24_set_err(nip24, _nip24_parse_str(doc, L"/result/error/description", NULL));
+		_nip24_set_err(nip24, atoi(code), _nip24_parse_str(doc, L"/result/error/description", NULL));
 		goto err;
 	}
 
@@ -1020,6 +1108,9 @@ NIP24_API AllData* nip24_get_all_data(NIP24Client* nip24, Number type, const cha
 		_snwprintf(xpath, MAX_STRING, L"/result/firm/PKDs/PKD[%d]/primary", i);
 		str = _nip24_parse_str(doc, xpath, "false");
 		pkd->Primary = (strcmp(str, "true") == 0 ? TRUE : FALSE);
+		
+		free(str);
+		str = NULL;
 
 		// add
 		ad->PKDCount++;
@@ -1040,7 +1131,7 @@ err:
 
 	pkd_free(&pkd);
 
-	free(res);
+	free(code);
 	free(str);
 
 	return ad;
@@ -1058,10 +1149,10 @@ NIP24_API VIESData* nip24_get_vies_data(NIP24Client* nip24, const char* euvat)
 
 	char url[MAX_STRING];
 
-	char* res = NULL;
+	char* code = NULL;
 
 	if (!nip24 || !euvat || strlen(euvat) == 0) {
-		_nip24_set_err(nip24, "Nieprawid³owy parametr wejœciowy funkcji");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_INPUT, NULL);
 		goto err;
 	}
 
@@ -1077,16 +1168,16 @@ NIP24_API VIESData* nip24_get_vies_data(NIP24Client* nip24, const char* euvat)
 
 	// prepare request
 	if (!_nip24_http_get(nip24, url, &doc)) {
-		_nip24_set_err(nip24, "Nie uda³o siê nawi¹zaæ po³¹czenia z serwisem NIP24");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_CONNECT, NULL);
 		goto err;
 	}
 
 	// parse response
-	res = _nip24_parse_str(doc, L"/result/error/code", NULL);
+	code = _nip24_parse_str(doc, L"/result/error/code", NULL);
 
-	if (res && strlen(res) > 0) {
+	if (code && strlen(code) > 0) {
 		// error
-		_nip24_set_err(nip24, _nip24_parse_str(doc, L"/result/error/description", NULL));
+		_nip24_set_err(nip24, atoi(code), _nip24_parse_str(doc, L"/result/error/description", NULL));
 		goto err;
 	}
 
@@ -1114,7 +1205,7 @@ err:
 		doc->lpVtbl->Release(doc);
 	}
 
-	free(res);
+	free(code);
 
 	return vies;
 }
@@ -1126,10 +1217,10 @@ NIP24_API VATStatus* nip24_get_vat_status(NIP24Client* nip24, Number type, const
 
 	char url[MAX_STRING];
 
-	char* res = NULL;
+	char* code = NULL;
 
 	if (!nip24 || type < NIP || type > EUVAT || !number || strlen(number) == 0) {
-		_nip24_set_err(nip24, "Nieprawid³owy parametr wejœciowy funkcji");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_INPUT, NULL);
 		goto err;
 	}
 
@@ -1145,16 +1236,16 @@ NIP24_API VATStatus* nip24_get_vat_status(NIP24Client* nip24, Number type, const
 
 	// prepare request
 	if (!_nip24_http_get(nip24, url, &doc)) {
-		_nip24_set_err(nip24, "Nie uda³o siê nawi¹zaæ po³¹czenia z serwisem NIP24");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_CONNECT, NULL);
 		goto err;
 	}
 
 	// parse response
-	res = _nip24_parse_str(doc, L"/result/error/code", NULL);
+	code = _nip24_parse_str(doc, L"/result/error/code", NULL);
 
-	if (res && strlen(res) > 0) {
+	if (code && strlen(code) > 0) {
 		// error
-		_nip24_set_err(nip24, _nip24_parse_str(doc, L"/result/error/description", NULL));
+		_nip24_set_err(nip24, atoi(code), _nip24_parse_str(doc, L"/result/error/description", NULL));
 		goto err;
 	}
 
@@ -1179,7 +1270,7 @@ err:
 		doc->lpVtbl->Release(doc);
 	}
 
-	free(res);
+	free(code);
 
 	return vat;
 }
@@ -1198,11 +1289,11 @@ NIP24_API IBANStatus* nip24_get_iban_status(NIP24Client* nip24, Number type, con
 	char date_str[MAX_STRING];
 	char url[MAX_STRING];
 
-	char* res = NULL;
+	char* code = NULL;
 	char* ib = NULL;
 
 	if (!nip24 || type < NIP || type > KRS || !number || strlen(number) == 0 || !iban || strlen(iban) == 0) {
-		_nip24_set_err(nip24, "Nieprawid³owy parametr wejœciowy funkcji");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_INPUT, NULL);
 		goto err;
 	}
 
@@ -1212,7 +1303,7 @@ NIP24_API IBANStatus* nip24_get_iban_status(NIP24Client* nip24, Number type, con
 		snprintf(iban_str, sizeof(iban_str), "PL%s", iban);
 	
 		if (!nip24_iban_is_valid(iban_str)) {
-			_nip24_set_err(nip24, "Numer IBAN jest nieprawid³owy");
+			_nip24_set_err(nip24, NIP24_ERR_CLI_IBAN, NULL);
 			goto err;
 		}
 	}
@@ -1242,16 +1333,16 @@ NIP24_API IBANStatus* nip24_get_iban_status(NIP24Client* nip24, Number type, con
 
 	// prepare request
 	if (!_nip24_http_get(nip24, url, &doc)) {
-		_nip24_set_err(nip24, "Nie uda³o siê nawi¹zaæ po³¹czenia z serwisem NIP24");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_CONNECT, NULL);
 		goto err;
 	}
 
 	// parse response
-	res = _nip24_parse_str(doc, L"/result/error/code", NULL);
+	code = _nip24_parse_str(doc, L"/result/error/code", NULL);
 
-	if (res && strlen(res) > 0) {
+	if (code && strlen(code) > 0) {
 		// error
-		_nip24_set_err(nip24, _nip24_parse_str(doc, L"/result/error/description", NULL));
+		_nip24_set_err(nip24, atoi(code), _nip24_parse_str(doc, L"/result/error/description", NULL));
 		goto err;
 	}
 
@@ -1276,7 +1367,7 @@ err:
 		doc->lpVtbl->Release(doc);
 	}
 
-	free(res);
+	free(code);
 	free(ib);
 
 	return is;
@@ -1296,11 +1387,11 @@ NIP24_API WLStatus* nip24_get_whitelist_status(NIP24Client* nip24, Number type, 
 	char date_str[MAX_STRING];
 	char url[MAX_STRING];
 
-	char* res = NULL;
+	char* code = NULL;
 	char* ib = NULL;
 
 	if (!nip24 || type < NIP || type > KRS || !number || strlen(number) == 0 || !iban || strlen(iban) == 0) {
-		_nip24_set_err(nip24, "Nieprawid³owy parametr wejœciowy funkcji");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_INPUT, NULL);
 		goto err;
 	}
 
@@ -1310,7 +1401,7 @@ NIP24_API WLStatus* nip24_get_whitelist_status(NIP24Client* nip24, Number type, 
 		snprintf(iban_str, sizeof(iban_str), "PL%s", iban);
 
 		if (!nip24_iban_is_valid(iban_str)) {
-			_nip24_set_err(nip24, "Numer IBAN jest nieprawid³owy");
+			_nip24_set_err(nip24, NIP24_ERR_CLI_IBAN, NULL);
 			goto err;
 		}
 	}
@@ -1340,16 +1431,16 @@ NIP24_API WLStatus* nip24_get_whitelist_status(NIP24Client* nip24, Number type, 
 
 	// prepare request
 	if (!_nip24_http_get(nip24, url, &doc)) {
-		_nip24_set_err(nip24, "Nie uda³o siê nawi¹zaæ po³¹czenia z serwisem NIP24");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_CONNECT, NULL);
 		goto err;
 	}
 
 	// parse response
-	res = _nip24_parse_str(doc, L"/result/error/code", NULL);
+	code = _nip24_parse_str(doc, L"/result/error/code", NULL);
 
-	if (res && strlen(res) > 0) {
+	if (code && strlen(code) > 0) {
 		// error
-		_nip24_set_err(nip24, _nip24_parse_str(doc, L"/result/error/description", NULL));
+		_nip24_set_err(nip24, atoi(code), _nip24_parse_str(doc, L"/result/error/description", NULL));
 		goto err;
 	}
 
@@ -1378,7 +1469,7 @@ err:
 		doc->lpVtbl->Release(doc);
 	}
 
-	free(res);
+	free(code);
 	free(ib);
 
 	return ws;
@@ -1389,6 +1480,197 @@ NIP24_API WLStatus* nip24_get_whitelist_status_nip(NIP24Client* nip24, const cha
 	return nip24_get_whitelist_status(nip24, NIP, nip, iban, date);
 }
 
+NIP24_API SearchResult* nip24_search_vat_registry(NIP24Client* nip24, Number type, const char* number, time_t date)
+{
+	IXMLDOMDocument2* doc = NULL;
+	SearchResult* sr = NULL;
+	VATEntity* ve = NULL;
+
+	wchar_t xpath[MAX_STRING];
+
+	char date_str[MAX_STRING];
+	char url[MAX_STRING];
+
+	char* code = NULL;
+	char* str = NULL;
+
+	int i;
+	int k;
+
+	if (!nip24 || type < NIP || type > IBAN || !number || strlen(number) == 0) {
+		_nip24_set_err(nip24, NIP24_ERR_CLI_INPUT, NULL);
+		goto err;
+	}
+
+	if (date <= 0) {
+		date = time(NULL);
+	}
+
+	strftime(date_str, sizeof(date_str), "%Y-%m-%d", localtime(&date));
+
+	// clear error
+	_nip24_clear_err(nip24);
+
+	// validate number and construct path
+	snprintf(url, sizeof(url), "%s/search/vat/", nip24->url);
+
+	if (!_nip24_get_path_suffix(nip24, type, number, url)) {
+		goto err;
+	}
+
+	strcat_s(url, sizeof(url), "/");
+	strcat_s(url, sizeof(url), date_str);
+
+	// prepare request
+	if (!_nip24_http_get(nip24, url, &doc)) {
+		_nip24_set_err(nip24, NIP24_ERR_CLI_CONNECT, NULL);
+		goto err;
+	}
+
+	// parse response
+	code = _nip24_parse_str(doc, L"/result/error/code", NULL);
+
+	if (code && strlen(code) > 0) {
+		// error
+		_nip24_set_err(nip24, atoi(code), _nip24_parse_str(doc, L"/result/error/description", NULL));
+		goto err;
+	}
+
+	if (!searchresult_new(&sr)) {
+		goto err;
+	}
+
+	sr->UID = _nip24_parse_str(doc, L"/result/search/uid", NULL);
+	sr->ResultsType = NIP24_RESULT_VAT_ENTITY;
+
+	for (i = 1; ; i++) {
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/nip", i);
+		str = _nip24_parse_str(doc, xpath, NULL);
+
+		if (!str || strlen(str) == 0) {
+			break;
+		}
+
+		if (!vatentity_new(&ve)) {
+			searchresult_free(&sr);
+			goto err;
+		}
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/name", i);
+		ve->Name = _nip24_parse_str(doc, xpath, NULL);
+
+		ve->NIP = str;
+		str = NULL;
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/regon", i);
+		ve->REGON = _nip24_parse_str(doc, xpath, NULL);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/krs", i);
+		ve->KRS = _nip24_parse_str(doc, xpath, NULL);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/residenceAddress", i);
+		ve->ResidenceAddress = _nip24_parse_str(doc, xpath, NULL);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/workingAddress", i);
+		ve->WorkingAddress = _nip24_parse_str(doc, xpath, NULL);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/vat/status", i);
+		ve->VATStatus = _nip24_parse_int(doc, xpath, 0);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/vat/result", i);
+		ve->VATResult = _nip24_parse_str(doc, xpath, NULL);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/representatives", i);
+		_nip24_parse_vatperson(doc, xpath, &ve->Representatives, &ve->RepresentativesCount);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/authorizedClerks", i);
+		_nip24_parse_vatperson(doc, xpath, &ve->AuthorizedClerks, &ve->AuthorizedClerksCount);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/partners", i);
+		_nip24_parse_vatperson(doc, xpath, &ve->Partners, &ve->PartnersCount);
+
+		for (k = 1; ; k++) {
+			_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/ibans/iban[%d]", i, k);
+			str = _nip24_parse_str(doc, xpath, NULL);
+
+			if (!str || strlen(str) == 0) {
+				break;
+			}
+
+			// add
+			ve->IBANsCount++;
+
+			if ((ve->IBANs = (char**)realloc(ve->IBANs, sizeof(char*) * ve->IBANsCount)) == NULL) {
+				searchresult_free(&sr);
+				goto err;
+			}
+
+			ve->IBANs[ve->IBANsCount - 1] = str;
+			str = NULL;
+		}
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/hasVirtualAccounts", i);
+		str = _nip24_parse_str(doc, xpath, "false");
+		ve->HasVirtualAccounts = (strcmp(str, "true") == 0 ? TRUE : FALSE);
+
+		free(str);
+		str = NULL;
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/registrationLegalDate", i);
+		ve->RegistrationLegalDate = _nip24_parse_date(doc, xpath);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/registrationDenialDate", i);
+		ve->RegistrationDenialDate = _nip24_parse_date(doc, xpath);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/registrationDenialBasis", i);
+		ve->RegistrationDenialBasis = _nip24_parse_str(doc, xpath, NULL);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/restorationDate", i);
+		ve->RestorationDate = _nip24_parse_date(doc, xpath);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/restorationBasis", i);
+		ve->RestorationBasis = _nip24_parse_str(doc, xpath, NULL);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/removalDate", i);
+		ve->RemovalDate = _nip24_parse_date(doc, xpath);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/search/entities/entity[%d]/removalBasis", i);
+		ve->RemovalBasis = _nip24_parse_str(doc, xpath, NULL);
+
+		// add
+		sr->ResultsCount++;
+
+		if ((sr->Results.VATEntity = (VATEntity**)realloc(sr->Results.VATEntity, sizeof(VATEntity*) * sr->ResultsCount)) == NULL) {
+			searchresult_free(&sr);
+			goto err;
+		}
+
+		sr->Results.VATEntity[sr->ResultsCount - 1] = ve;
+		ve = NULL;
+	}
+
+	sr->ID = _nip24_parse_str(doc, L"/result/search/id", NULL);
+	sr->Date = _nip24_parse_date(doc, L"/result/search/date");
+	sr->Source = _nip24_parse_str(doc, L"/result/search/source", NULL);
+
+err:
+	if (doc) {
+		doc->lpVtbl->Release(doc);
+	}
+
+	vatentity_free(&ve);
+
+	free(code);
+	free(str);
+
+	return sr;
+}
+
+NIP24_API SearchResult* nip24_search_vat_registry_nip(NIP24Client* nip24, const char* nip, time_t date)
+{
+	return nip24_search_vat_registry(nip24, NIP, nip, date);
+}
+
 NIP24_API AccountStatus* nip24_get_account_status(NIP24Client* nip24)
 {
 	IXMLDOMDocument2* doc = NULL;
@@ -1396,10 +1678,10 @@ NIP24_API AccountStatus* nip24_get_account_status(NIP24Client* nip24)
 
 	char url[MAX_STRING];
 
-	char* res = NULL;
+	char* code = NULL;
 
 	if (!nip24) {
-		_nip24_set_err(nip24, "Nieprawid³owy parametr wejœciowy funkcji");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_INPUT, NULL);
 		goto err;
 	}
 
@@ -1411,16 +1693,16 @@ NIP24_API AccountStatus* nip24_get_account_status(NIP24Client* nip24)
 
 	// prepare request
 	if (!_nip24_http_get(nip24, url, &doc)) {
-		_nip24_set_err(nip24, "Nie uda³o siê nawi¹zaæ po³¹czenia z serwisem NIP24");
+		_nip24_set_err(nip24, NIP24_ERR_CLI_CONNECT, NULL);
 		goto err;
 	}
 
 	// parse response
-	res = _nip24_parse_str(doc, L"/result/error/code", NULL);
+	code = _nip24_parse_str(doc, L"/result/error/code", NULL);
 
-	if (res && strlen(res) > 0) {
+	if (code && strlen(code) > 0) {
 		// error
-		_nip24_set_err(nip24, _nip24_parse_str(doc, L"/result/error/description", NULL));
+		_nip24_set_err(nip24, atoi(code), _nip24_parse_str(doc, L"/result/error/description", NULL));
 		goto err;
 	}
 
@@ -1429,6 +1711,8 @@ NIP24_API AccountStatus* nip24_get_account_status(NIP24Client* nip24)
 	}
 
 	status->UID = _nip24_parse_str(doc, L"/result/account/uid", NULL);
+	status->Type = _nip24_parse_str(doc, L"/result/account/type", NULL);
+	status->ValidTo = _nip24_parse_datetime(doc, L"/result/account/validTo");
 	status->BillingPlanName = _nip24_parse_str(doc, L"/result/account/billingPlan/name", NULL);
 
 	status->SubscriptionPrice = _nip24_parse_double(doc, L"/result/account/billingPlan/subscriptionPrice", 0);
@@ -1438,6 +1722,7 @@ NIP24_API AccountStatus* nip24_get_account_status(NIP24Client* nip24)
 	status->ItemPriceAll = _nip24_parse_double(doc, L"/result/account/billingPlan/itemPriceAllData", 0);
 	status->ItemPriceIBAN = _nip24_parse_double(doc, L"/result/account/billingPlan/itemPriceAllIBAN", 0);
 	status->ItemPriceWhitelist = _nip24_parse_double(doc, L"/result/account/billingPlan/itemPriceWLStatus", 0);
+	status->ItemPriceSearchVAT = _nip24_parse_double(doc, L"/result/account/billingPlan/itemPriceSearchVAT", 0);
 
 	status->Limit = _nip24_parse_int(doc, L"/result/account/billingPlan/limit", 0);
 	status->RequestDelay = _nip24_parse_int(doc, L"/result/account/billingPlan/requestDelay", 0);
@@ -1461,6 +1746,7 @@ NIP24_API AccountStatus* nip24_get_account_status(NIP24Client* nip24)
 	status->FuncGetVATStatus = _nip24_parse_bool(doc, L"/result/account/billingPlan/funcGetVATStatus", FALSE);
 	status->FuncGetIBANStatus = _nip24_parse_bool(doc, L"/result/account/billingPlan/funcGetIBANStatus", FALSE);
 	status->FuncGetWhitelistStatus = _nip24_parse_bool(doc, L"/result/account/billingPlan/funcGetWLStatus", FALSE);
+	status->FuncSearchVAT = _nip24_parse_bool(doc, L"/result/account/billingPlan/funcSearchVAT", FALSE);
 
 	status->InvoiceDataCount = _nip24_parse_int(doc, L"/result/account/requests/invoiceData", 0);
 	status->AllDataCount = _nip24_parse_int(doc, L"/result/account/requests/allData", 0);
@@ -1469,6 +1755,7 @@ NIP24_API AccountStatus* nip24_get_account_status(NIP24Client* nip24)
 	status->VIESStatusCount = _nip24_parse_int(doc, L"/result/account/requests/viesStatus", 0);
 	status->IBANStatusCount = _nip24_parse_int(doc, L"/result/account/requests/ibanStatus", 0);
 	status->WhitelistStatusCount = _nip24_parse_int(doc, L"/result/account/requests/wlStatus", 0);
+	status->SearchVATCount = _nip24_parse_int(doc, L"/result/account/requests/searchVAT", 0);
 	status->TotalCount = _nip24_parse_int(doc, L"/result/account/requests/total", 0);
 
 err:
@@ -1476,7 +1763,7 @@ err:
 		doc->lpVtbl->Release(doc);
 	}
 
-	free(res);
+	free(code);
 
 	return status;
 }

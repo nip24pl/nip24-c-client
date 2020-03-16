@@ -1,5 +1,5 @@
 /**
- * Copyright 2015-2019 NETCAT (www.netcat.pl)
+ * Copyright 2015-2020 NETCAT (www.netcat.pl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  * @author NETCAT <firma@netcat.pl>
- * @copyright 2015-2019 NETCAT (www.netcat.pl)
+ * @copyright 2015-2020 NETCAT (www.netcat.pl)
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
@@ -23,7 +23,7 @@
 
 /////////////////////////////////////////////////////////////////
 
-#define NIP24_VERSION			"1.3.4"
+#define NIP24_VERSION			"1.3.5"
 
 #define NIP24_PRODUCTION_URL	"https://www.nip24.pl/api"
 
@@ -40,7 +40,8 @@ typedef enum Number {
 	NIP = 1,
 	REGON,
 	KRS,
-	EUVAT
+	EUVAT,
+    IBAN
 } Number;
 
 /////////////////////////////////////////////////////////////////
@@ -54,6 +55,8 @@ typedef struct NIP24Client {
 	char* key;
 
 	char* app;
+
+    int err_code;
 	char* err;
 } NIP24Client;
 
@@ -94,6 +97,13 @@ NIP24_API BOOL nip24_new_test(NIP24Client** nip24);
  * @param nip24 adres na utworzony obiekt klienta
  */
 NIP24_API void nip24_free(NIP24Client** nip24);
+
+/**
+ * Ostatni kod bledu
+ * @param nip24 adres na obiekt klienta
+ * @return kod bledu
+ */
+NIP24_API int nip24_get_last_err_code(NIP24Client* nip24);
 
 /**
  * Ostatni komunikat bledu
@@ -225,6 +235,25 @@ NIP24_API WLStatus* nip24_get_whitelist_status(NIP24Client* nip24, Number type, 
  * @return dane firmy lub NULL w przypadku bledu
  */
 NIP24_API WLStatus* nip24_get_whitelist_status_nip(NIP24Client* nip24, const char* nip, const char* iban, time_t date);
+
+/**
+ * Wyszukiwanie danych w rejestrze VAT
+ * @param nip24 adres obiektu klienta
+ * @param type typ numeru identyfikujacego firme
+ * @param number numer okreslonego typu
+ * @param date dzien, ktorego ma dotyczyc wyszukiwanie (0 - biezacy dzien)
+ * @return wyszukane dane lub NULL w przypadku bledu
+ */
+NIP24_API SearchResult* nip24_search_vat_registry(NIP24Client* nip24, Number type, const char* number, time_t date);
+
+/**
+ * Wyszukiwanie danych w rejestrze VAT
+ * @param nip24 adres obiektu klienta
+ * @param nip numer NIP
+ * @param date dzien, ktorego ma dotyczyc wyszukiwanie (0 - biezacy dzien)
+ * @return wyszukane dane lub NULL w przypadku bledu
+ */
+NIP24_API SearchResult* nip24_search_vat_registry_nip(NIP24Client* nip24, const char* nip, time_t date);
 
 /**
  * Sprawdzenie biezacego stanu konta uzytkownika

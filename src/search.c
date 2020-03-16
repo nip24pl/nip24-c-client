@@ -22,45 +22,50 @@
 #include "nip24.h"
 
 
-NIP24_API BOOL ibanstatus_new(IBANStatus** iban)
+NIP24_API BOOL searchresult_new(SearchResult** result)
 {
-	IBANStatus* is = NULL;
+	SearchResult* sr = NULL;
 
 	BOOL ret = FALSE;
 
-	if ((is = (IBANStatus*)malloc(sizeof(IBANStatus))) == NULL) {
+	if ((sr = (SearchResult*)malloc(sizeof(SearchResult))) == NULL) {
 		goto err;
 	}
 
-	memset(is, 0, sizeof(IBANStatus));
+	memset(sr, 0, sizeof(SearchResult));
 
 	// ok
-	*iban = is;
-	is = NULL;
+	*result = sr;
+	sr = NULL;
 
 	ret = TRUE;
 
 err:
-	ibanstatus_free(&is);
+	searchresult_free(&sr);
 
 	return ret;
 }
 
-NIP24_API void ibanstatus_free(IBANStatus** iban)
+NIP24_API void searchresult_free(SearchResult** result)
 {
-	IBANStatus* is = (iban ? *iban : NULL);
+	SearchResult* sr = (result ? *result : NULL);
 
-	if (is) {
-		free(is->UID);
+	int i;
 
-		free(is->NIP);
-		free(is->REGON);
-		free(is->IBAN);
+	if (sr) {
+		free(sr->UID);
+		free(sr->ID);
 
-		free(is->ID);
-		free(is->Source);
+		for (i = 0; i < sr->ResultsCount; i++) {
+			if (sr->ResultsType == NIP24_RESULT_VAT_ENTITY) {
+				vatentity_free(&sr->Results.VATEntity[i]);
+			}
+		}
 
-		free(*iban);
-		*iban = NULL;
+		free(sr->Results.VATEntity);
+		free(sr->Source);
+
+		free(*result);
+		*result = NULL;
 	}
 }

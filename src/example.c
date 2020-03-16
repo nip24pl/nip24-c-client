@@ -1,5 +1,5 @@
 /**
- * Copyright 2015-2019 NETCAT (www.netcat.pl)
+ * Copyright 2015-2020 NETCAT (www.netcat.pl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  * @author NETCAT <firma@netcat.pl>
- * @copyright 2015-2019 NETCAT (www.netcat.pl)
+ * @copyright 2015-2020 NETCAT (www.netcat.pl)
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
@@ -39,6 +39,7 @@ int main()
 	VIESData* vies = NULL;
 	IBANStatus* iban = NULL;
 	WLStatus* whitelist = NULL;
+	SearchResult* result = NULL;
 
 	BOOL active;
 
@@ -65,7 +66,7 @@ int main()
 		printf("Iloœæ zapytañ: %d\n", account->TotalCount);
 	}
 	else {
-		printf("B³¹d: %s\n", nip24_get_last_err(nip24));
+		printf("B³¹d: %s (kod: %d)\n", nip24_get_last_err(nip24), nip24_get_last_err_code(nip24));
 	}
 
 	// Sprawdzenie statusu fimy
@@ -79,7 +80,7 @@ int main()
 			printf("Firma zawiesi³a lub zakoñczy³a dzia³alnoœæ");
 		}
 		else {
-			printf("B³¹d: %s\n", nip24_get_last_err(nip24));
+			printf("B³¹d: %s (kod: %d)\n", nip24_get_last_err(nip24), nip24_get_last_err_code(nip24));
 		}
 	}
 
@@ -94,7 +95,7 @@ int main()
 		printf("Wynik: %s\n", vat->Result);
 	}
 	else {
-		printf("B³¹d: %s\n", nip24_get_last_err(nip24));
+		printf("B³¹d: %s (kod: %d)\n", nip24_get_last_err(nip24), nip24_get_last_err_code(nip24));
 	}
 
 	// Wywo³anie metody zwracaj¹cej dane do faktury
@@ -107,7 +108,7 @@ int main()
 		printf("NIP: %s\n", invoice->NIP);
 	}
 	else {
-		printf("B³¹d: %s\n", nip24_get_last_err(nip24));
+		printf("B³¹d: %s (kod: %d)\n", nip24_get_last_err(nip24), nip24_get_last_err_code(nip24));
 	}
 
 	// Wywo³anie metody zwracaj¹cej szczegó³owe dane firmy
@@ -120,7 +121,7 @@ int main()
 		printf("NIP: %s\n", all->NIP);
 	}
 	else {
-		printf("B³¹d: %s\n", nip24_get_last_err(nip24));
+		printf("B³¹d: %s (kod: %d)\n", nip24_get_last_err(nip24), nip24_get_last_err_code(nip24));
 	}
 
 	// Wywo³anie metody zwracaj¹cej dane z systemu VIES
@@ -132,7 +133,7 @@ int main()
 		printf("Aktywny: %d\n", vies->Valid);
 	}
 	else {
-		printf("B³¹d: %s\n", nip24_get_last_err(nip24));
+		printf("B³¹d: %s (kod: %d)\n", nip24_get_last_err(nip24), nip24_get_last_err_code(nip24));
 	}
 
 	// Wywo³anie metody zwracaj¹cej informacje o rachunku bankowym
@@ -144,7 +145,7 @@ int main()
 		printf("Aktywny: %d\n", iban->Valid);
 	}
 	else {
-		printf("B³¹d: %s\n", nip24_get_last_err(nip24));
+		printf("B³¹d: %s (kod: %d)\n", nip24_get_last_err(nip24), nip24_get_last_err_code(nip24));
 	}
 
 	// Wywo³anie metody sprawdzaj¹cej status podmiotu na bia³ej liœcie podatników VAT
@@ -156,7 +157,29 @@ int main()
 		printf("Aktywny: %d\n", whitelist->Valid);
 	}
 	else {
-		printf("B³¹d: %s\n", nip24_get_last_err(nip24));
+		printf("B³¹d: %s (kod: %d)\n", nip24_get_last_err(nip24), nip24_get_last_err_code(nip24));
+	}
+
+	// Wywo³anie metody wyszukuj¹cej dane w rejestrze VAT
+	result = nip24_search_vat_registry(nip24, NIP, nip, 0);
+
+	if (result != NULL) {
+		printf("Wyniki: %d\n", result->ResultsCount);
+
+		if (result->ResultsCount > 0) {
+			printf("Nazwa: %s\n", result->Results.VATEntity[0]->Name);
+			printf("NIP: %s\n", result->Results.VATEntity[0]->NIP);
+
+			if (result->Results.VATEntity[0]->IBANsCount > 0) {
+				printf("IBAN: %s\n", result->Results.VATEntity[0]->IBANs[0]);
+			}
+
+			printf("Status: %d\n", result->Results.VATEntity[0]->VATStatus);
+			printf("Wynik: %s\n", result->Results.VATEntity[0]->VATResult);
+		}
+	}
+	else {
+		printf("B³¹d: %s (kod: %d)\n", nip24_get_last_err(nip24), nip24_get_last_err_code(nip24));
 	}
 
 err:
@@ -169,6 +192,7 @@ err:
 	viesdata_free(&vies);
 	ibanstatus_free(&iban);
 	wlstatus_free(&whitelist);
+	searchresult_free(&result);
 
 	return 0;
 }

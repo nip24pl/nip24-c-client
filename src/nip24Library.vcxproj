@@ -183,11 +183,14 @@
     <ClInclude Include="..\include\nip24_account.h" />
     <ClInclude Include="..\include\nip24_all.h" />
     <ClInclude Include="..\include\nip24_client.h" />
+    <ClInclude Include="..\include\nip24_error.h" />
     <ClInclude Include="..\include\nip24_iban.h" />
     <ClInclude Include="..\include\nip24_invoice.h" />
     <ClInclude Include="..\include\nip24_pkd.h" />
+    <ClInclude Include="..\include\nip24_search.h" />
     <ClInclude Include="..\include\nip24_validate.h" />
     <ClInclude Include="..\include\nip24_vat.h" />
+    <ClInclude Include="..\include\nip24_vatentity.h" />
     <ClInclude Include="..\include\nip24_vies.h" />
     <ClInclude Include="..\include\nip24_wl.h" />
     <ClInclude Include="internal.h" />
@@ -197,6 +200,7 @@
     <ClCompile Include="account.c" />
     <ClCompile Include="all.c" />
     <ClCompile Include="client.c" />
+    <ClCompile Include="error.c" />
     <ClCompile Include="iban.c" />
     <ClCompile Include="invoice.c" />
     <ClCompile Include="nip24.c">
@@ -206,8 +210,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="pkd.c" />
+    <ClCompile Include="search.c" />
     <ClCompile Include="validate.c" />
     <ClCompile Include="vat.c" />
+    <ClCompile Include="vatentity.c" />
     <ClCompile Include="vies.c" />
     <ClCompile Include="wl.c" />
   </ItemGroup>

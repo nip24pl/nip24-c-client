@@ -18,33 +18,32 @@
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
-#ifndef __NIP24_API_INVOICE_H__
-#define __NIP24_API_INVOICE_H__
+#ifndef __NIP24_API_SEARCH_H__
+#define __NIP24_API_SEARCH_H__
+
+/////////////////////////////////////////////////////////////////
+
+#define NIP24_RESULT_VAT_ENTITY         1
 
 /////////////////////////////////////////////////////////////////
 
 /**
- * Dane firmy wymagane do wystawienia faktury
+ * Wynik wyszukiwania danych
  */
-typedef struct InvoiceData {
+typedef struct SearchResult {
 	char* UID;
 
-	char* NIP;
-	char* Name;
-	char* FirstName;
-	char* LastName;
+    int ResultsType;
+    int ResultsCount;
 
-	char* Street;
-	char* StreetNumber;
-	char* HouseNumber;
-	char* City;
-	char* PostCode;
-	char* PostCity;
+    union {
+        VATEntity** VATEntity;
+    } Results;
 
-	char* Phone;
-	char* Email;
-	char* WWW;
-} InvoiceData;
+    char* ID;
+    time_t Date;
+    char* Source;
+} SearchResult;
 
 /////////////////////////////////////////////////////////////////
 
@@ -54,15 +53,15 @@ extern "C" {
 
 /**
  * Utworzenie nowego obiektu z danymi
- * @param invoice adres na utworzony obiekt
+ * @param pkd adres na utworzony obiekt
  */
-NIP24_API BOOL invoicedata_new(InvoiceData** invoice);
+NIP24_API BOOL searchresult_new(SearchResult** result);
 
 /**
  * Dealokacja obiektu z danymi
- * @param invoice adres na utworzony obiekt
+ * @param pkd adres na utworzony obiekt
  */
-NIP24_API void invoicedata_free(InvoiceData** invoice);
+NIP24_API void searchresult_free(SearchResult** result);
 
 #ifdef __cplusplus
 }

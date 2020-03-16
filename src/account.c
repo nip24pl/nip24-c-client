@@ -1,5 +1,5 @@
 /**
- * Copyright 2015-2019 NETCAT (www.netcat.pl)
+ * Copyright 2015-2020 NETCAT (www.netcat.pl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,13 @@
  * limitations under the License.
  *
  * @author NETCAT <firma@netcat.pl>
- * @copyright 2015-2019 NETCAT (www.netcat.pl)
+ * @copyright 2015-2020 NETCAT (www.netcat.pl)
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
 #include "internal.h"
 #include "nip24.h"
+
 
 NIP24_API BOOL accountstatus_new(AccountStatus** account)
 {
@@ -51,6 +52,7 @@ NIP24_API void accountstatus_free(AccountStatus** account)
 
 	if (as) {
 		free(as->UID);
+		free(as->Type);
 		free(as->BillingPlanName);
 
 		free(*account);

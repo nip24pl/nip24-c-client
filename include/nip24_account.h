@@ -1,5 +1,5 @@
 /**
- * Copyright 2015-2019 NETCAT (www.netcat.pl)
+ * Copyright 2015-2020 NETCAT (www.netcat.pl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  * @author NETCAT <firma@netcat.pl>
- * @copyright 2015-2019 NETCAT (www.netcat.pl)
+ * @copyright 2015-2020 NETCAT (www.netcat.pl)
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
@@ -29,6 +29,8 @@
 typedef struct AccountStatus {
 	char* UID;
 
+	char* Type;
+	time_t ValidTo;
 	char* BillingPlanName;
 
 	double SubscriptionPrice;
@@ -38,6 +40,7 @@ typedef struct AccountStatus {
 	double ItemPriceAll;
 	double ItemPriceIBAN;
 	double ItemPriceWhitelist;
+	double ItemPriceSearchVAT;
 
 	int Limit;
 	int RequestDelay;
@@ -59,6 +62,7 @@ typedef struct AccountStatus {
 	BOOL FuncGetVATStatus;
 	BOOL FuncGetIBANStatus;
 	BOOL FuncGetWhitelistStatus;
+	BOOL FuncSearchVAT;
 
 	int InvoiceDataCount;
 	int AllDataCount;
@@ -67,6 +71,7 @@ typedef struct AccountStatus {
 	int VIESStatusCount;
 	int IBANStatusCount;
 	int WhitelistStatusCount;
+	int SearchVATCount;
 	int TotalCount;
 } AccountStatus;
 
