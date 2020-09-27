@@ -50,6 +50,7 @@ typedef struct AccountStatus {
 	BOOL TerytCodes;
 	BOOL ExcelAddIn;
 	BOOL JPKVAT;
+	BOOL CLI;
 	BOOL Stats;
 	BOOL NIPMonitor;
 	BOOL SearchByNIP;

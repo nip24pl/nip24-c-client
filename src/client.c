@@ -1732,6 +1732,7 @@ NIP24_API AccountStatus* nip24_get_account_status(NIP24Client* nip24)
 	status->TerytCodes = _nip24_parse_bool(doc, L"/result/account/billingPlan/terytCodes", FALSE);
 	status->ExcelAddIn = _nip24_parse_bool(doc, L"/result/account/billingPlan/excelAddin", FALSE);
 	status->JPKVAT = _nip24_parse_bool(doc, L"/result/account/billingPlan/jpkVat", FALSE);
+	status->CLI = _nip24_parse_bool(doc, L"/result/account/billingPlan/cli", FALSE);
 	status->Stats = _nip24_parse_bool(doc, L"/result/account/billingPlan/stats", FALSE);
 	status->NIPMonitor = _nip24_parse_bool(doc, L"/result/account/billingPlan/nipMonitor", FALSE);
 
