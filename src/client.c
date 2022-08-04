@@ -1,5 +1,5 @@
 /**
- * Copyright 2015-2020 NETCAT (www.netcat.pl)
+ * Copyright 2015-2022 NETCAT (www.netcat.pl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  * @author NETCAT <firma@netcat.pl>
- * @copyright 2015-2020 NETCAT (www.netcat.pl)
+ * @copyright 2015-2022 NETCAT (www.netcat.pl)
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
@@ -1262,6 +1262,7 @@ NIP24_API VATStatus* nip24_get_vat_status(NIP24Client* nip24, Number type, const
 	vat->Status = _nip24_parse_int(doc, L"/result/vat/status", 0);
 	vat->Result = _nip24_parse_str(doc, L"/result/vat/result", NULL);
 
+	vat->ID = _nip24_parse_str(doc, L"/result/vat/id", NULL);
 	vat->Date = _nip24_parse_date(doc, L"/result/vat/date");
 	vat->Source = _nip24_parse_str(doc, L"/result/vat/source", NULL);
 
