@@ -23,7 +23,7 @@
 
 /////////////////////////////////////////////////////////////////
 
-#define NIP24_VERSION			"1.3.7"
+#define NIP24_VERSION			"1.3.8"
 
 #define NIP24_PRODUCTION_URL	"https://www.nip24.pl/api"
 

@@ -117,6 +117,19 @@ static BOOL _nip24_isalnum(char* str, int start, int count)
 	return TRUE;
 }
 
+static BOOL _nip24_isalnum_ext(char* str, int start, int count)
+{
+	int i;
+
+	for (i = start; i < (start + count); i++) {
+		if (!isalnum(str[i]) && str[i] != '+' && str[i] != '*') {
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
 /////////////////////////////////////////////////////////////////
 
 NIP24_API char* nip24_nip_normalize(const char* nip)
@@ -286,7 +299,7 @@ NIP24_API char* nip24_euvat_normalize(const char* euvat)
 	memset(num, 0, sizeof(num));
 
 	for (i = 0, p = 0; i < len; i++) {
-		if (isalnum(euvat[i]) && p < (sizeof(num) - 1)) {
+		if ((isalnum(euvat[i]) || euvat[i] == '+' || euvat[i] == '*') && p < (sizeof(num) - 1)) {
 			num[p++] = toupper(euvat[i]);
 		}
 	}
@@ -323,8 +336,8 @@ NIP24_API BOOL nip24_euvat_is_valid(const char* euvat)
 		}
 	}
 	else if (strncmp(num, "BE", 2) == 0) {
-		// BE0\\d{9}
-		if (len != (3 + 9) || num[2] != '0') {
+		// BE[0-1]{1}\d{9}
+		if (len != (3 + 9) || (num[2] != '0' && num[2] != '1')) {
 			goto err;
 		}
 
@@ -343,7 +356,7 @@ NIP24_API BOOL nip24_euvat_is_valid(const char* euvat)
 		}
 	}
 	else if (strncmp(num, "CY", 2) == 0) {
-		// CY\\d{8}[A-Z]{1}
+		// CY\d{8}[A-Z]{1}
 		if (len != (2 + 8 + 1) || !isalpha(num[len - 1])) {
 			goto err;
 		}
@@ -403,12 +416,20 @@ NIP24_API BOOL nip24_euvat_is_valid(const char* euvat)
 		}
 	}
 	else if (strncmp(num, "ES", 2) == 0) {
-		// ES[A-Z0-9]{9}
-		if (len != (2 + 9)) {
+		// ES[A-Z0-9]{1}\d{7}[A-Z0-9]{1}
+		if (len != (2 + 1 + 7 + 1)) {
 			goto err;
 		}
 
-		if (!_nip24_isalnum(num, 2, 9)) {
+		if (!_nip24_isalnum(num, 2, 1)) {
+			goto err;
+		}
+
+		if (!_nip24_isdigit(num, 3, 7)) {
+			goto err;
+		}
+
+		if (!_nip24_isalnum(num, 10, 1)) {
 			goto err;
 		}
 	}
@@ -436,16 +457,6 @@ NIP24_API BOOL nip24_euvat_is_valid(const char* euvat)
 			goto err;
 		}
 	}
-	else if (strncmp(num, "GB", 2) == 0) {
-		// GB[A-Z0-9]{5,12}
-		if (len < (2 + 5) || len > (2 + 12)) {
-			goto err;
-		}
-
-		if (!_nip24_isalnum(num, 2, len - 2)) {
-			goto err;
-		}
-	}
 	else if (strncmp(num, "HR", 2) == 0) {
 		// HR\\d{11}
 		if (len != (2 + 11)) {
@@ -467,12 +478,12 @@ NIP24_API BOOL nip24_euvat_is_valid(const char* euvat)
 		}
 	}
 	else if (strncmp(num, "IE", 2) == 0) {
-		// IE[A-Z0-9]{8,9}
+		// IE[A-Z0-9+*]{8,9}
 		if (len < (2 + 8) || len > (2 + 9)) {
 			goto err;
 		}
 
-		if (!_nip24_isalnum(num, 2, len - 2)) {
+		if (!_nip24_isalnum_ext(num, 2, len - 2)) {
 			goto err;
 		}
 	}
@@ -527,16 +538,12 @@ NIP24_API BOOL nip24_euvat_is_valid(const char* euvat)
 		}
 	}
 	else if (strncmp(num, "NL", 2) == 0) {
-		// NL\\d{9}B\\d{2}
-		if (len != (2 + 9 + 1 + 2) || num[11] != 'B') {
+		// NL[A-Z0-9+*]{12}
+		if (len != (2 + 12)) {
 			goto err;
 		}
 
-		if (!_nip24_isdigit(num, 2, 9)) {
-			goto err;
-		}
-
-		if (!_nip24_isdigit(num, 12, 2)) {
+		if (!_nip24_isalnum_ext(num, 2, 12)) {
 			goto err;
 		}
 	}
@@ -597,6 +604,16 @@ NIP24_API BOOL nip24_euvat_is_valid(const char* euvat)
 		}
 
 		if (!_nip24_isdigit(num, 2, 10)) {
+			goto err;
+		}
+	}
+	else if (strncmp(num, "XI", 2) == 0) {
+		// XI[A-Z0-9]{5,12}
+		if (len < (2 + 5) || len > (2 + 12)) {
+			goto err;
+		}
+
+		if (!_nip24_isalnum(num, 2, len - 2)) {
 			goto err;
 		}
 	}
