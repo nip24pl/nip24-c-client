@@ -1,5 +1,5 @@
 /**
- * Copyright 2015-2022 NETCAT (www.netcat.pl)
+ * Copyright 2015-2023 NETCAT (www.netcat.pl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  * @author NETCAT <firma@netcat.pl>
- * @copyright 2015-2022 NETCAT (www.netcat.pl)
+ * @copyright 2015-2023 NETCAT (www.netcat.pl)
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
@@ -334,6 +334,10 @@ static BOOL _nip24_http_get(NIP24Client* nip24, const char* url, IXMLDOMDocument
 	}
 
 	if ((hr = pXhr->lpVtbl->open(pXhr, L"GET", burl, async, var, var)) != S_OK) {
+		goto err;
+	}
+
+	if ((hr = pXhr->lpVtbl->setRequestHeader(pXhr, L"Accept", L"application/xml")) != S_OK) {
 		goto err;
 	}
 
