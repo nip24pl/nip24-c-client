@@ -22,48 +22,42 @@
 #include "nip24.h"
 
 
-NIP24_API BOOL viesdata_new(VIESData** vies)
+NIP24_API BOOL businesspartner_new(BusinessPartner** bp)
 {
-	VIESData* vd = NULL;
+	BusinessPartner* p = NULL;
 
 	BOOL ret = FALSE;
 
-	if ((vd = (VIESData*)malloc(sizeof(VIESData))) == NULL) {
+	if ((p = (BusinessPartner*)malloc(sizeof(BusinessPartner))) == NULL) {
 		goto err;
 	}
 
-	memset(vd, 0, sizeof(VIESData));
+	memset(p, 0, sizeof(BusinessPartner));
 
 	// ok
-	*vies = vd;
-	vd = NULL;
+	*bp = p;
+	p = NULL;
 
 	ret = TRUE;
 
 err:
-	viesdata_free(&vd);
+	businesspartner_free(&p);
 
 	return ret;
 }
 
-NIP24_API void viesdata_free(VIESData** vies)
+NIP24_API void businesspartner_free(BusinessPartner** bp)
 {
-	VIESData* vd = (vies ? *vies : NULL);
+	BusinessPartner* p = (bp ? *bp : NULL);
 
-	if (vd) {
-		free(vd->UID);
+	if (p) {
+		free(p->REGON);
+		free(p->FirmName);
+		free(p->FirstName);
+		free(p->SecondName);
+		free(p->LastName);
 
-		free(vd->CountryCode);
-		free(vd->VATNumber);
-
-		free(vd->TraderName);
-		free(vd->TraderCompanyType);
-		free(vd->TraderAddress);
-
-		free(vd->ID);
-		free(vd->Source);
-
-		free(*vies);
-		*vies = NULL;
+		free(*bp);
+		*bp = NULL;
 	}
 }

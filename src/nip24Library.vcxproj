@@ -186,6 +186,7 @@
     <ClInclude Include="..\include\nip24_error.h" />
     <ClInclude Include="..\include\nip24_iban.h" />
     <ClInclude Include="..\include\nip24_invoice.h" />
+    <ClInclude Include="..\include\nip24_partner.h" />
     <ClInclude Include="..\include\nip24_pkd.h" />
     <ClInclude Include="..\include\nip24_search.h" />
     <ClInclude Include="..\include\nip24_validate.h" />
@@ -209,6 +210,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="partner.c" />
     <ClCompile Include="pkd.c" />
     <ClCompile Include="search.c" />
     <ClCompile Include="validate.c" />

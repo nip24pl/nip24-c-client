@@ -1,5 +1,5 @@
 /**
- * Copyright 2015-2023 NETCAT (www.netcat.pl)
+ * Copyright 2015-2024 NETCAT (www.netcat.pl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  * @author NETCAT <firma@netcat.pl>
- * @copyright 2015-2023 NETCAT (www.netcat.pl)
+ * @copyright 2015-2024 NETCAT (www.netcat.pl)
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
@@ -989,6 +989,7 @@ NIP24_API AllData* nip24_get_all_data(NIP24Client* nip24, Number type, const cha
 {
 	IXMLDOMDocument2* doc = NULL;
 	AllData* ad = NULL;
+	BusinessPartner* bp = NULL;
 	PKD* pkd = NULL;
 
 	wchar_t xpath[MAX_STRING];
@@ -1091,6 +1092,49 @@ NIP24_API AllData* nip24_get_all_data(NIP24Client* nip24, Number type, const cha
 	ad->OwnershipFormName = _nip24_parse_str(doc, L"/result/firm/ownershipForm/name", NULL);
 
 	for (i = 1; ; i++) {
+		_snwprintf(xpath, MAX_STRING, L"/result/firm/businessPartners/businessPartner[%d]/regon", i);
+		str = _nip24_parse_str(doc, xpath, NULL);
+
+		if (!str || strlen(str) == 0) {
+			break;
+		}
+
+		if (!businesspartner_new(&bp)) {
+			alldata_free(&ad);
+			goto err;
+		}
+
+		bp->REGON = str;
+		str = NULL;
+
+		_snwprintf(xpath, MAX_STRING, L"/result/firm/businessPartners/businessPartner[%d]/firmName", i);
+		bp->FirmName = _nip24_parse_str(doc, xpath, NULL);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/firm/businessPartners/businessPartner[%d]/firstName", i);
+		bp->FirstName = _nip24_parse_str(doc, xpath, NULL);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/firm/businessPartners/businessPartner[%d]/secondName", i);
+		bp->SecondName = _nip24_parse_str(doc, xpath, NULL);
+
+		_snwprintf(xpath, MAX_STRING, L"/result/firm/businessPartners/businessPartner[%d]/lastName", i);
+		bp->LastName = _nip24_parse_str(doc, xpath, NULL);
+
+		free(str);
+		str = NULL;
+
+		// add
+		ad->BusinessPartnerCount++;
+
+		if ((ad->BusinessPartner = (BusinessPartner**)realloc(ad->BusinessPartner, sizeof(BusinessPartner*) * ad->BusinessPartnerCount)) == NULL) {
+			alldata_free(&ad);
+			goto err;
+		}
+
+		ad->BusinessPartner[ad->BusinessPartnerCount - 1] = bp;
+		bp = NULL;
+	}
+
+	for (i = 1; ; i++) {
 		_snwprintf(xpath, MAX_STRING, L"/result/firm/PKDs/PKD[%d]/code", i);
 		str = _nip24_parse_str(doc, xpath, NULL);
 
@@ -1133,6 +1177,7 @@ err:
 		doc->lpVtbl->Release(doc);
 	}
 
+	businesspartner_free(&bp);
 	pkd_free(&pkd);
 
 	free(code);

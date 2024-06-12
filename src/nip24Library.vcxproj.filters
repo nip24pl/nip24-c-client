@@ -63,6 +63,9 @@
     <ClInclude Include="..\include\nip24_vatentity.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\nip24_partner.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="nip24.c">
@@ -105,6 +108,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="vatentity.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="partner.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

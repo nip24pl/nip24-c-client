@@ -18,32 +18,21 @@
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
-#ifndef __NIP24_API_SEARCH_H__
-#define __NIP24_API_SEARCH_H__
-
-/////////////////////////////////////////////////////////////////
-
-#define NIP24_RESULT_VAT_ENTITY         1
+#ifndef __NIP24_API_BUSINESS_PARTNER_H__
+#define __NIP24_API_BUSINESS_PARTNER_H__
 
 /////////////////////////////////////////////////////////////////
 
 /**
- * Wynik wyszukiwania danych
+ * Dane wspólnika
  */
-typedef struct SearchResult {
-	char* UID;
-
-    int ResultsType;
-    int ResultsCount;
-
-    union {
-        VATEntity** VATEntity;
-    } Results;
-
-    char* ID;
-    time_t Date;
-    char* Source;
-} SearchResult;
+typedef struct BusinessPartner {
+	char* REGON;
+	char* FirmName;
+	char* FirstName;
+	char* SecondName;
+	char* LastName;
+} BusinessPartner;
 
 /////////////////////////////////////////////////////////////////
 
@@ -53,15 +42,15 @@ extern "C" {
 
 /**
  * Utworzenie nowego obiektu z danymi
- * @param pkd adres na utworzony obiekt
+ * @param bp adres na utworzony obiekt
  */
-NIP24_API BOOL searchresult_new(SearchResult** result);
+NIP24_API BOOL businesspartner_new(BusinessPartner** bp);
 
 /**
  * Dealokacja obiektu z danymi
- * @param pkd adres na utworzony obiekt
+ * @param bp adres na utworzony obiekt
  */
-NIP24_API void searchresult_free(SearchResult** result);
+NIP24_API void businesspartner_free(BusinessPartner** bp);
 
 #ifdef __cplusplus
 }
