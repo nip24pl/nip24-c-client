@@ -1,5 +1,5 @@
 /**
- * Copyright 2015-2024 NETCAT (www.netcat.pl)
+ * Copyright 2015-2025 NETCAT (www.netcat.pl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  * @author NETCAT <firma@netcat.pl>
- * @copyright 2015-2024 NETCAT (www.netcat.pl)
+ * @copyright 2015-2025 NETCAT (www.netcat.pl)
  * @license http://www.apache.org/licenses/LICENSE-2.0
  */
 
@@ -1159,6 +1159,9 @@ NIP24_API AllData* nip24_get_all_data(NIP24Client* nip24, Number type, const cha
 		
 		free(str);
 		str = NULL;
+
+		_snwprintf(xpath, MAX_STRING, L"/result/firm/PKDs/PKD[%d]/version", i);
+		pkd->Version = _nip24_parse_str(doc, xpath, NULL);
 
 		// add
 		ad->PKDCount++;
