@@ -1071,6 +1071,8 @@ NIP24_API AllData* nip24_get_all_data(NIP24Client* nip24, Number type, const cha
 	ad->HoldDate = _nip24_parse_datetime(doc, L"/result/firm/holdDate");
 	ad->RenevalDate = _nip24_parse_datetime(doc, L"/result/firm/renevalDate");
 	ad->LastUpdateDate = _nip24_parse_datetime(doc, L"/result/firm/lastUpdateDate");
+	ad->BankruptcyDate = _nip24_parse_datetime(doc, L"/result/firm/bankruptcyDate");
+	ad->EndOfBankruptcyProceedingsDate = _nip24_parse_datetime(doc, L"/result/firm/endOfBankruptcyProceedingsDate");
 	ad->EndDate = _nip24_parse_datetime(doc, L"/result/firm/endDate");
 
 	ad->RegistryEntityCode = _nip24_parse_str(doc, L"/result/firm/registryEntity/code", NULL);

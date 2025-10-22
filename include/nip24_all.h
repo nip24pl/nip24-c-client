@@ -64,6 +64,8 @@ typedef struct AllData {
 	time_t HoldDate;
 	time_t RenevalDate;
 	time_t LastUpdateDate;
+	time_t BankruptcyDate;
+	time_t EndOfBankruptcyProceedingsDate;
 	time_t EndDate;
 
 	char* RegistryEntityCode;
